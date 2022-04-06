@@ -1,6 +1,6 @@
 # TriPeaks Solitaire Solver
 
-This is a TriPeaks Solitaire solver written in Rust, based on [Courtney Pitcher's original](https://github.com/IgniparousTempest/javascript-tri-peaks-solitaire-solver).
+This is a TriPeaks Solitaire solver written in Rust, based on [Courtney Pitcher (@IgniparousTempest)'s original](https://github.com/IgniparousTempest/javascript-tri-peaks-solitaire-solver).
 
 It uses mostly the same algorithm as the original, but modified to be slightly more efficient (using fewer allocations).
 
