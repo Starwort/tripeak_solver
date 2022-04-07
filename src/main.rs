@@ -211,7 +211,7 @@ impl ToString for Move {
 }
 
 /// Solve a game of TriPeaks.
-fn solve(board: TriPeaksBoard, stock: ArrayVec<Card, 24>, moves: &mut Vec<Move>) -> bool {
+fn solve(board: &mut TriPeaksBoard, stock: &mut ArrayVec<Card, 24>, moves: &mut Vec<Move>) -> bool {
     if board.is_cleared() {
         return true;
     }
@@ -224,21 +224,21 @@ fn solve(board: TriPeaksBoard, stock: ArrayVec<Card, 24>, moves: &mut Vec<Move>)
         if !board.cards[pos].unwrap().is_sequential(&top_stock) {
             continue;
         }
-        let mut this_board = board;
-        let mut new_stock = stock.clone();
 
-        let card = (&mut this_board.cards[pos]).take().unwrap();
-        *new_stock.last_mut().unwrap() = card;
+        let card = (&mut board.cards[pos]).take().unwrap();
+        *stock.last_mut().unwrap() = card;
         moves.push(Move::Pyramid(card));
-        if solve(this_board, new_stock, moves) {
+        if solve(board, stock, moves) {
             return true;
         }
         moves.pop();
+        board.cards[pos] = Some(card);
+        *stock.last_mut().unwrap() = top_stock;
     }
 
-    let mut stock = stock;
-    stock.pop().unwrap();
+    let popped = stock.pop().unwrap();
     if stock.is_empty() {
+        stock.push(popped);
         return false;
     }
     moves.push(Move::Stock(*stock.last().unwrap()));
@@ -246,6 +246,7 @@ fn solve(board: TriPeaksBoard, stock: ArrayVec<Card, 24>, moves: &mut Vec<Move>)
         return true;
     }
     moves.pop();
+    stock.push(popped);
 
     false
 }
@@ -274,8 +275,8 @@ fn parse(state: impl Iterator<Item = String>) -> (TriPeaksBoard, ArrayVec<Card, 
 
 /// Solve a game of TriPeaks, emitting a progress bar for the top-level call.
 fn solve_with_progress(
-    board: TriPeaksBoard,
-    stock: ArrayVec<Card, 24>,
+    board: &mut TriPeaksBoard,
+    stock: &mut ArrayVec<Card, 24>,
     moves: &mut Vec<Move>,
 ) -> bool {
     if board.is_cleared() {
@@ -291,32 +292,36 @@ fn solve_with_progress(
         if !board.cards[pos].unwrap().is_sequential(&top_stock) {
             continue;
         }
-        let mut this_board = board;
-        let mut new_stock = stock.clone();
 
-        let card = (&mut this_board.cards[pos]).take().unwrap();
-        *new_stock.last_mut().unwrap() = card;
+        let card = (&mut board.cards[pos]).take().unwrap();
+        *stock.last_mut().unwrap() = card;
         moves.push(Move::Pyramid(card));
-        if solve(this_board, new_stock, moves) {
+        if solve(board, stock, moves) {
             return true;
         }
         moves.pop();
+        *stock.last_mut().unwrap() = top_stock;
     }
 
-    let mut stock = stock;
-    moves.push(Move::Stock(stock.pop().unwrap()));
+    let popped = stock.pop().unwrap();
+    if stock.is_empty() {
+        stock.push(popped);
+        return false;
+    }
+    moves.push(Move::Stock(*stock.last().unwrap()));
     if solve_with_progress(board, stock, moves) {
         return true;
     }
     moves.pop();
+    stock.push(popped);
 
     false
 }
 
 pub fn solve_with(state: impl Iterator<Item = String>) -> Option<Vec<Move>> {
-    let (board, stock) = parse(state);
+    let (mut board, mut stock) = parse(state);
     let mut moves = Vec::new();
-    if solve(board, stock, &mut moves) {
+    if solve(&mut board, &mut stock, &mut moves) {
         Some(moves)
     } else {
         None
@@ -326,7 +331,7 @@ pub fn solve_with(state: impl Iterator<Item = String>) -> Option<Vec<Move>> {
 fn main() {
     let cards = std::env::args().skip(1);
 
-    let (board, stock) = parse(cards);
+    let (mut board, mut stock) = parse(cards);
     let stock_str = stock
         .iter()
         .map(|x| x.to_string())
@@ -334,7 +339,7 @@ fn main() {
         .join(", ");
     println!("{board}\n\n[{stock_str}]");
     let mut moves = Vec::new();
-    if solve_with_progress(board, stock, &mut moves) {
+    if solve_with_progress(&mut board, &mut stock, &mut moves) {
         for r#move in moves {
             r#move.output();
         }
